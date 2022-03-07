@@ -30,7 +30,6 @@ module Lecture1
     , strSum
     , lowerAndGreater
     ) where
-import GHC.Base (VecElem(Int16ElemRep))
 
 -- VVV If you need to import libraries, do it after this line ... VVV
 
@@ -57,7 +56,7 @@ is 25.
 -}
 -- DON'T FORGET TO SPECIFY THE TYPE IN HERE
 sumOfSquares :: Int -> Int -> Int
-sumOfSquares x y = x^2 + y^2
+sumOfSquares x y = x*x + y*y
 
 {- | Implement a function that returns the last digit of a given number.
 
@@ -88,12 +87,10 @@ function.
 minmax :: Int -> Int -> Int -> Int
 minmax x y z =
     let
-        a = min x y
-        b = min a z
-        c = max x y
-        d = max c z
+        a = min x (min y z)
+        b = max x (max y z)
     in
-        d - b
+        b - a
 
 
 {- | Implement a function that takes a string, start and end positions
@@ -114,8 +111,8 @@ string.
 subString :: Int -> Int -> [Char] -> [Char]
 subString start end str =
     let
-        toDrop = if start < 0 then 0 else start
-        toTake = if end < 0 then 0 else end - toDrop + 1
+        toDrop = max 0 start -- if start < 0 then 0 else start
+        toTake = max 0 (end - toDrop + 1) -- if end < 0 then 0 else end - toDrop + 1
     in
         take toTake (drop toDrop str)
 
@@ -129,7 +126,7 @@ and finds a sum of the numbers inside this string.
 The string contains only spaces and/or numbers.
 -}
 strSum :: [Char] -> Int
-strSum str = sum (map (read :: [Char] -> Int) (words str))
+strSum str = sum (map read (words str)) -- strSum str = sum (map (read :: [Char] -> Int) (words str))
 
 
 {- | Write a function that takes a number and a list of numbers and
