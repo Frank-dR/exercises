@@ -42,6 +42,7 @@ module Lecture2
 
 -- VVV If you need to import libraries, do it after this line ... VVV
 import Data.Char ( isSpace )
+import Control.Concurrent (yield)
 -- ^^^ and before this line. Otherwise the test suite might fail  ^^^
 
 {- | Implement a function that finds a product of all the numbers in
@@ -258,7 +259,11 @@ False
 True
 -}
 isIncreasing :: [Int] -> Bool
-isIncreasing = error "TODO"
+isIncreasing [] = True
+isIncreasing (x:xs)
+  | null xs = True
+  | x > head xs = False 
+  | otherwise = isIncreasing xs 
 
 {- | Implement a function that takes two lists, sorted in the
 increasing order, and merges them into new list, also sorted in the
@@ -271,7 +276,11 @@ verify that.
 [1,2,3,4,7]
 -}
 merge :: [Int] -> [Int] -> [Int]
-merge = error "TODO"
+merge [] y = y
+merge x [] = x 
+merge (x:xs) (y:ys)
+  | isIncreasing (x : [y]) = x : merge xs (y : ys)
+  | otherwise = y : merge (x : xs) ys
 
 {- | Implement the "Merge Sort" algorithm in Haskell. The @mergeSort@
 function takes a list of numbers and returns a new list containing the
@@ -288,7 +297,12 @@ The algorithm of merge sort is the following:
 [1,2,3]
 -}
 mergeSort :: [Int] -> [Int]
-mergeSort = error "TODO"
+mergeSort [] = []
+mergeSort [x] = [x]
+mergeSort list = 
+  let (x,y) = splitAt (div (length list) 2) list
+  in
+    merge (mergeSort x) (mergeSort y)
 
 
 {- | Haskell is famous for being a superb language for implementing
@@ -341,7 +355,18 @@ data EvalError
 It returns either a successful evaluation result or an error.
 -}
 eval :: Variables -> Expr -> Either EvalError Int
-eval = error "TODO"
+eval _ (Lit x) = Right x
+eval l (Var x) = 
+  case lookup x l of
+    Nothing -> Left (VariableNotFound x)
+    Just a -> Right a
+eval l (Add x y) =
+  case eval l x of
+    Right a -> case eval l y of
+      Right b -> Right (a + b)
+      Left b -> Left b
+    Left a -> Left a
+
 
 {- | Compilers also perform optimizations! One of the most common
 optimizations is "Constant Folding". It performs arithmetic operations
@@ -361,7 +386,7 @@ It also can be:
 
 x + 45 + y
 
-Write a function that takes and expression and performs "Constant
+Write a function that takes an expression and performs "Constant
 Folding" optimization on the given expression.
 -}
 constantFolding :: Expr -> Expr
