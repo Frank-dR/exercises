@@ -41,7 +41,7 @@ module Lecture2
     ) where
 
 -- VVV If you need to import libraries, do it after this line ... VVV
-
+import Data.Char ( isSpace )
 -- ^^^ and before this line. Otherwise the test suite might fail  ^^^
 
 {- | Implement a function that finds a product of all the numbers in
@@ -52,7 +52,10 @@ zero, you can stop calculating product and return 0 immediately.
 84
 -}
 lazyProduct :: [Int] -> Int
-lazyProduct = error "TODO"
+lazyProduct [] = 1
+lazyProduct (0:_) = 0
+lazyProduct [x] = x
+lazyProduct (x:xs) = x * lazyProduct xs
 
 {- | Implement a function that duplicates every element in the list.
 
@@ -62,7 +65,8 @@ lazyProduct = error "TODO"
 "ccaabb"
 -}
 duplicate :: [a] -> [a]
-duplicate = error "TODO"
+duplicate [] = []
+duplicate (x : xs) = x : x : duplicate xs
 
 {- | Implement function that takes index and a list and removes the
 element at the given position. Additionally, this function should also
@@ -74,7 +78,12 @@ return the removed element.
 >>> removeAt 10 [1 .. 5]
 (Nothing,[1,2,3,4,5])
 -}
-removeAt = error "TODO"
+removeAt :: Int -> [a] -> (Maybe a,[a])
+removeAt n l
+  | null l = (Nothing,[])
+  | n < 0 = (Nothing, l)
+  | null (drop n l) = (Nothing, l) 
+  | otherwise = (Just (l !! n), take n l ++ drop (n+1) l)
 
 {- | Write a function that takes a list of lists and returns only
 lists of even lengths.
@@ -85,7 +94,9 @@ lists of even lengths.
 ♫ NOTE: Use eta-reduction and function composition (the dot (.) operator)
   in this function.
 -}
-evenLists = error "TODO"
+evenLists :: [[a]] -> [[a]]
+evenLists = filter (even . length)
+
 
 {- | The @dropSpaces@ function takes a string containing a single word
 or number surrounded by spaces and removes all leading and trailing
@@ -101,7 +112,20 @@ spaces.
 
 🕯 HINT: look into Data.Char and Prelude modules for functions you may use.
 -}
-dropSpaces = error "TODO"
+dropSpaces :: [Char] -> [Char]
+-- dropSpaces = filter (not . isSpace)  
+-- the function above works, but not on infinite trailing spaces
+
+-- following solves this, but no eta-reduction or function composition used
+--   so there are other, probably shorter/better ways ...
+--
+-- dropSpaces list = headSave (filter (\(x:_) -> not (isSpace x)) (words list))
+--   where 
+--     headSave [] = []
+--     headSave l = head l
+
+-- final result:
+dropSpaces string = takeWhile (not . isSpace) (dropWhile isSpace string)
 
 {- |
 
@@ -119,7 +143,7 @@ Below is the description of the fight and character specifications:
 
   * A chest contains a non-zero amount of gold and a possible treasure.
     When defining the type of a treasure chest, you don't know what
-    treasures it stores insight, so your chest data type must be able
+    treasures it stores inside, so your chest data type must be able
     to contain any possible treasure.
   * As a reward, knight takes all the gold, the treasure and experience.
   * Experience is calculated based on the dragon type. A dragon can be
@@ -158,13 +182,62 @@ You're free to define any helper functions.
 -}
 
 -- some help in the beginning ;)
+type Health = Int
+type Endurance = Int
+type Power = Int
+
 data Knight = Knight
-    { knightHealth    :: Int
-    , knightAttack    :: Int
-    , knightEndurance :: Int
+    { knightHealth    :: Health
+    , knightAttack    :: Power
+    , knightEndurance :: Endurance
     }
 
-dragonFight = error "TODO"
+data Dragon = Dragon
+  { dragonType :: Int
+  , dragonHealth :: Health
+  , dragonAttack :: Power
+  , dragonAcid :: Bool
+  , dragonChest :: Chest
+  , dragonHitsTaken :: Int
+  }
+
+data Chest = Chest
+  { chestGold :: Int
+  , chestTreasure :: Int
+  }
+
+data DragonType
+  = Red
+  | Black
+  | Green
+
+-- dragonHit :: Dragon -> Knight -> Dragon
+-- dragonHit dr kn = 
+
+data Outcome
+  = Lost
+  | Won
+  | Flee
+
+dragonFight :: (Knight, Dragon) -> Outcome
+dragonFight (k, d)
+  | knightHealth k <= 0 = Lost
+  | knightEndurance k < 0 = Flee
+  | dragonHealth d <= 0 = Won
+  | otherwise = dragonFight (slayDragon k d)
+
+slayDragon :: Knight -> Dragon -> (Knight, Dragon)
+slayDragon k d = 
+  let
+    endurance = knightEndurance k - 1
+    hitsTaken = dragonHitsTaken d + 1
+    -- if hitsTaken == 10 
+    -- then let kHealth = knightHealth k - dragonAttack d 
+    -- else let kHealth = knightHealth k
+    knightFought = k -- {knightHealth = kHealth, knightEndurance = endurance}
+    dragonFought = d {dragonHealth = dragonHealth d - knightAttack k, dragonHitsTaken = dragonHitsTaken d + 1}
+  in
+    (knightFought, dragonFought)
 
 ----------------------------------------------------------------------------
 -- Extra Challenges
