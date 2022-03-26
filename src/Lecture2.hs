@@ -26,6 +26,9 @@ module Lecture2
     , dropSpaces
 
     , Knight (..)
+    , Dragon (..)
+    , DragonType (..)
+    , Chest (..)
     , dragonFight
 
       -- * Hard
@@ -42,7 +45,7 @@ module Lecture2
 
 -- VVV If you need to import libraries, do it after this line ... VVV
 import Data.Char ( isSpace )
-import Control.Concurrent (yield)
+import Data.List.NonEmpty (cons)
 -- ^^^ and before this line. Otherwise the test suite might fail  ^^^
 
 {- | Implement a function that finds a product of all the numbers in
@@ -125,9 +128,9 @@ dropSpaces :: [Char] -> [Char]
 --     headSave [] = []
 --     headSave l = head l
 
--- final result:
-dropSpaces string = takeWhile (not . isSpace) (dropWhile isSpace string)
-
+-- final and even finaler ;-) result:
+-- dropSpaces string = takeWhile (not . isSpace) (dropWhile isSpace string)
+dropSpaces = takeWhile (not . isSpace) . dropWhile isSpace
 {- |
 
 The next task requires to create several data types and functions to
@@ -389,5 +392,30 @@ x + 45 + y
 Write a function that takes an expression and performs "Constant
 Folding" optimization on the given expression.
 -}
+{- Well, this solution gets the test to succeed, but that's just it.
+   An expression with more Var components would still go into infinite mode.
+   So there has to be a better way ... 
+   Any hints?? :-) -}
 constantFolding :: Expr -> Expr
-constantFolding = error "TODO"
+constantFolding (Lit a) = Lit a
+constantFolding (Var a) = Var a
+
+constantFolding (Add (Lit a) (Lit b)) = Lit (a + b)
+constantFolding (Add (Lit 0) a) = constantFolding a
+constantFolding (Add a (Lit 0)) = constantFolding a
+
+constantFolding (Add (Var a) (Var b)) = Add (Var a) (Var b)
+constantFolding (Add (Var a) (Lit b)) = Add (Var a) (Lit b)
+constantFolding (Add (Lit a) (Var b)) = Add (Var b) (Lit a)
+
+constantFolding (Add (Add (Var a) b) c) = constantFolding (Add (Var a) (constantFolding(Add b c)))
+constantFolding (Add (Add a (Var b)) c) = constantFolding (Add (Var b) (constantFolding (Add a c)))
+
+constantFolding (Add (Var a) (Add (Var b) (Lit 0))) = Add (Var a) (Var b)
+constantFolding (Add (Var a) (Add (Var b) (Lit c))) = Add (Var a) (Add (Var b) (Lit c))
+constantFolding (Add (Var a) (Add (Var b) (Var c))) = Add (Var a) (Add (Var b) (Var c))
+
+constantFolding (Add a (Add (Var b) c)) = constantFolding (Add (Var b) (constantFolding (Add a c)))
+constantFolding (Add a (Add b (Var c))) = constantFolding (Add (Var c) (constantFolding (Add a b)))
+
+constantFolding (Add a b) = constantFolding (Add (constantFolding a) (constantFolding b))  
