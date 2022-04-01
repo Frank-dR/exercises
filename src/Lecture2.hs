@@ -26,6 +26,9 @@ module Lecture2
     , dropSpaces
 
     , Knight (..)
+    , Dragon (..)
+    , DragonType (..)
+    , Chest (..)
     , dragonFight
 
       -- * Hard
@@ -41,7 +44,8 @@ module Lecture2
     ) where
 
 -- VVV If you need to import libraries, do it after this line ... VVV
-
+import Data.Char ( isSpace )
+-- import Data.List.NonEmpty (cons)
 -- ^^^ and before this line. Otherwise the test suite might fail  ^^^
 
 {- | Implement a function that finds a product of all the numbers in
@@ -52,7 +56,9 @@ zero, you can stop calculating product and return 0 immediately.
 84
 -}
 lazyProduct :: [Int] -> Int
-lazyProduct = error "TODO"
+lazyProduct [] = 1
+lazyProduct (0:_) = 0
+lazyProduct (x:xs) = x * lazyProduct xs
 
 {- | Implement a function that duplicates every element in the list.
 
@@ -62,7 +68,8 @@ lazyProduct = error "TODO"
 "ccaabb"
 -}
 duplicate :: [a] -> [a]
-duplicate = error "TODO"
+duplicate [] = []
+duplicate (x : xs) = x : x : duplicate xs
 
 {- | Implement function that takes index and a list and removes the
 element at the given position. Additionally, this function should also
@@ -74,7 +81,23 @@ return the removed element.
 >>> removeAt 10 [1 .. 5]
 (Nothing,[1,2,3,4,5])
 -}
-removeAt = error "TODO"
+removeAt :: Int -> [a] -> (Maybe a,[a])
+removeAt n l
+  | null l = (Nothing,[])
+  | n < 0 = (Nothing, l)
+  | otherwise =
+      let 
+        (a, b) = splitAt n l
+      in 
+        if null b 
+        then (Nothing, l)
+        else
+          let
+            (c, d) = splitAt 1 b
+          in
+            (Just (head c), a ++ d) 
+-- | null (drop n l) = (Nothing, l) 
+-- | otherwise = (Just (l !! n), take n l ++ drop (n+1) l)
 
 {- | Write a function that takes a list of lists and returns only
 lists of even lengths.
@@ -85,7 +108,9 @@ lists of even lengths.
 ♫ NOTE: Use eta-reduction and function composition (the dot (.) operator)
   in this function.
 -}
-evenLists = error "TODO"
+evenLists :: [[a]] -> [[a]]
+evenLists = filter (even . length)
+
 
 {- | The @dropSpaces@ function takes a string containing a single word
 or number surrounded by spaces and removes all leading and trailing
@@ -101,8 +126,21 @@ spaces.
 
 🕯 HINT: look into Data.Char and Prelude modules for functions you may use.
 -}
-dropSpaces = error "TODO"
+dropSpaces :: [Char] -> [Char]
+-- dropSpaces = filter (not . isSpace)  
+-- the function above works, but not on infinite trailing spaces
 
+-- following solves this, but no eta-reduction or function composition used
+--   so there are other, probably shorter/better ways ...
+--
+-- dropSpaces list = headSave (filter (\(x:_) -> not (isSpace x)) (words list))
+--   where 
+--     headSave [] = []
+--     headSave l = head l
+
+-- final and even finaler ;-) result:
+-- dropSpaces string = takeWhile (not . isSpace) (dropWhile isSpace string)
+dropSpaces = takeWhile (not . isSpace) . dropWhile isSpace
 {- |
 
 The next task requires to create several data types and functions to
@@ -119,7 +157,7 @@ Below is the description of the fight and character specifications:
 
   * A chest contains a non-zero amount of gold and a possible treasure.
     When defining the type of a treasure chest, you don't know what
-    treasures it stores insight, so your chest data type must be able
+    treasures it stores inside, so your chest data type must be able
     to contain any possible treasure.
   * As a reward, knight takes all the gold, the treasure and experience.
   * Experience is calculated based on the dragon type. A dragon can be
@@ -158,13 +196,62 @@ You're free to define any helper functions.
 -}
 
 -- some help in the beginning ;)
+type Health = Int
+type Endurance = Int
+type Power = Int
+
 data Knight = Knight
-    { knightHealth    :: Int
-    , knightAttack    :: Int
-    , knightEndurance :: Int
+    { knightHealth    :: Health
+    , knightAttack    :: Power
+    , knightEndurance :: Endurance
     }
 
-dragonFight = error "TODO"
+data Dragon = Dragon
+  { dragonType :: Int
+  , dragonHealth :: Health
+  , dragonAttack :: Power
+  , dragonAcid :: Bool
+  , dragonChest :: Chest
+  , dragonHitsTaken :: Int
+  }
+
+data Chest = Chest
+  { chestGold :: Int
+  , chestTreasure :: Int
+  }
+
+data DragonType
+  = Red
+  | Black
+  | Green
+
+-- dragonHit :: Dragon -> Knight -> Dragon
+-- dragonHit dr kn = 
+
+data Outcome
+  = Lost
+  | Won
+  | Flee
+
+dragonFight :: (Knight, Dragon) -> Outcome
+dragonFight (k, d)
+  | knightHealth k <= 0 = Lost
+  | knightEndurance k < 0 = Flee
+  | dragonHealth d <= 0 = Won
+  | otherwise = dragonFight (slayDragon k d)
+
+slayDragon :: Knight -> Dragon -> (Knight, Dragon)
+slayDragon k d = 
+  let
+    endurance = knightEndurance k - 1
+    hitsTaken = dragonHitsTaken d + 1
+    -- if hitsTaken == 10 
+    -- then let kHealth = knightHealth k - dragonAttack d 
+    -- else let kHealth = knightHealth k
+    knightFought = k -- {knightHealth = kHealth, knightEndurance = endurance}
+    dragonFought = d {dragonHealth = dragonHealth d - knightAttack k, dragonHitsTaken = dragonHitsTaken d + 1}
+  in
+    (knightFought, dragonFought)
 
 ----------------------------------------------------------------------------
 -- Extra Challenges
@@ -185,7 +272,9 @@ False
 True
 -}
 isIncreasing :: [Int] -> Bool
-isIncreasing = error "TODO"
+isIncreasing [] = True
+isIncreasing [_] = True
+isIncreasing (x:xs) = x < head xs && isIncreasing xs
 
 {- | Implement a function that takes two lists, sorted in the
 increasing order, and merges them into new list, also sorted in the
@@ -198,7 +287,11 @@ verify that.
 [1,2,3,4,7]
 -}
 merge :: [Int] -> [Int] -> [Int]
-merge = error "TODO"
+merge [] y = y
+merge x [] = x 
+merge (x:xs) (y:ys)
+  | isIncreasing (x : [y]) = x : merge xs (y : ys)
+  | otherwise = y : merge (x : xs) ys
 
 {- | Implement the "Merge Sort" algorithm in Haskell. The @mergeSort@
 function takes a list of numbers and returns a new list containing the
@@ -215,7 +308,11 @@ The algorithm of merge sort is the following:
 [1,2,3]
 -}
 mergeSort :: [Int] -> [Int]
-mergeSort = error "TODO"
+mergeSort [] = []
+mergeSort [x] = [x]
+mergeSort list = 
+  let (x,y) = splitAt (div (length list) 2) list
+  in merge (mergeSort x) (mergeSort y)
 
 
 {- | Haskell is famous for being a superb language for implementing
@@ -268,7 +365,19 @@ data EvalError
 It returns either a successful evaluation result or an error.
 -}
 eval :: Variables -> Expr -> Either EvalError Int
-eval = error "TODO"
+eval _ (Lit x) = Right x
+eval l (Var x) = 
+  case lookup x l of
+    Nothing -> Left (VariableNotFound x)
+    Just a -> Right a
+eval l (Add x y) =
+  case eval l x of
+    Left a -> Left a
+    Right a -> 
+      case eval l y of
+        Left b -> Left b
+        Right b -> Right (a + b)
+
 
 {- | Compilers also perform optimizations! One of the most common
 optimizations is "Constant Folding". It performs arithmetic operations
@@ -288,8 +397,48 @@ It also can be:
 
 x + 45 + y
 
-Write a function that takes and expression and performs "Constant
+Write a function that takes an expression and performs "Constant
 Folding" optimization on the given expression.
 -}
+{- Well, this solution gets the test to succeed, but that's just it.
+   An expression with more Var components would still go into infinite mode.
+   So there has to be a better way ... 
+   Any hints?? :-) -}
 constantFolding :: Expr -> Expr
-constantFolding = error "TODO"
+constantFolding expr = 
+  let 
+    l = toList expr
+    litSum = sumOfLits l
+    vars = varsOnly l
+  in
+  if litSum == Lit 0 
+    then toExpr vars 
+    else toExpr (litSum : vars)
+
+
+-- toList takes an expression, which can contain other expressions
+-- and makes a list of all internal expressions unequal to Add.
+toList :: Expr -> [Expr]
+toList (Add a b) = concat $ toList a : [toList b] -- add the list (a) to the list of lists (containing b) and then concat it all
+toList x = [x]                                    -- for single Var and Lit
+
+-- sumOfLits takes a list of expressions (Var / Lit) 
+-- and returns the total of all that are Lit expressions.
+sumOfLits :: [Expr] -> Expr
+sumOfLits l = 
+  let
+    litSum = sum $ [x | (Lit x) <- l] -- make a list (of the x) with every item of l that is a Lit, then take its sum
+  in
+  Lit litSum
+
+-- varsOnly takes a list of expressions (Var / Lit)
+-- and returns a list of only Var expressions.
+varsOnly :: [Expr] -> [Expr]
+varsOnly l = [x | x@(Var _) <- l]   -- make a list (of the Var x) with every item of l that is a Var
+
+-- toExpr takes a list of expressions (Var / Lit)
+-- and returns one expression combined by Add when needed.
+toExpr :: [Expr] -> Expr
+toExpr [] = Lit 0
+toExpr [x] = x  
+toExpr (x : xs) = Add x (toExpr xs)  -- make an expression of every item of l combined by Add expressions
