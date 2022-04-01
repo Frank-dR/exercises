@@ -45,7 +45,7 @@ module Lecture2
 
 -- VVV If you need to import libraries, do it after this line ... VVV
 import Data.Char ( isSpace )
-import Data.List.NonEmpty (cons)
+-- import Data.List.NonEmpty (cons)
 -- ^^^ and before this line. Otherwise the test suite might fail  ^^^
 
 {- | Implement a function that finds a product of all the numbers in
@@ -58,7 +58,6 @@ zero, you can stop calculating product and return 0 immediately.
 lazyProduct :: [Int] -> Int
 lazyProduct [] = 1
 lazyProduct (0:_) = 0
-lazyProduct [x] = x
 lazyProduct (x:xs) = x * lazyProduct xs
 
 {- | Implement a function that duplicates every element in the list.
@@ -86,8 +85,19 @@ removeAt :: Int -> [a] -> (Maybe a,[a])
 removeAt n l
   | null l = (Nothing,[])
   | n < 0 = (Nothing, l)
-  | null (drop n l) = (Nothing, l) 
-  | otherwise = (Just (l !! n), take n l ++ drop (n+1) l)
+  | otherwise =
+      let 
+        (a, b) = splitAt n l
+      in 
+        if null b 
+        then (Nothing, l)
+        else
+          let
+            (c, d) = splitAt 1 b
+          in
+            (Just (head c), a ++ d) 
+-- | null (drop n l) = (Nothing, l) 
+-- | otherwise = (Just (l !! n), take n l ++ drop (n+1) l)
 
 {- | Write a function that takes a list of lists and returns only
 lists of even lengths.
@@ -263,10 +273,8 @@ True
 -}
 isIncreasing :: [Int] -> Bool
 isIncreasing [] = True
-isIncreasing (x:xs)
-  | null xs = True
-  | x > head xs = False 
-  | otherwise = isIncreasing xs 
+isIncreasing [_] = True
+isIncreasing (x:xs) = x < head xs && isIncreasing xs
 
 {- | Implement a function that takes two lists, sorted in the
 increasing order, and merges them into new list, also sorted in the
@@ -304,8 +312,7 @@ mergeSort [] = []
 mergeSort [x] = [x]
 mergeSort list = 
   let (x,y) = splitAt (div (length list) 2) list
-  in
-    merge (mergeSort x) (mergeSort y)
+  in merge (mergeSort x) (mergeSort y)
 
 
 {- | Haskell is famous for being a superb language for implementing
@@ -365,10 +372,11 @@ eval l (Var x) =
     Just a -> Right a
 eval l (Add x y) =
   case eval l x of
-    Right a -> case eval l y of
-      Right b -> Right (a + b)
-      Left b -> Left b
     Left a -> Left a
+    Right a -> 
+      case eval l y of
+        Left b -> Left b
+        Right b -> Right (a + b)
 
 
 {- | Compilers also perform optimizations! One of the most common
@@ -397,25 +405,40 @@ Folding" optimization on the given expression.
    So there has to be a better way ... 
    Any hints?? :-) -}
 constantFolding :: Expr -> Expr
-constantFolding (Lit a) = Lit a
-constantFolding (Var a) = Var a
+constantFolding expr = 
+  let 
+    l = toList expr
+    litSum = sumOfLits l
+    vars = varsOnly l
+  in
+  if litSum == Lit 0 
+    then toExpr vars 
+    else toExpr (litSum : vars)
 
-constantFolding (Add (Lit a) (Lit b)) = Lit (a + b)
-constantFolding (Add (Lit 0) a) = constantFolding a
-constantFolding (Add a (Lit 0)) = constantFolding a
 
-constantFolding (Add (Var a) (Var b)) = Add (Var a) (Var b)
-constantFolding (Add (Var a) (Lit b)) = Add (Var a) (Lit b)
-constantFolding (Add (Lit a) (Var b)) = Add (Var b) (Lit a)
+-- toList takes an expression, which can contain other expressions
+-- and makes a list of all internal expressions unequal to Add.
+toList :: Expr -> [Expr]
+toList (Add a b) = concat $ toList a : [toList b] -- add the list (a) to the list of lists (containing b) and then concat it all
+toList x = [x]                                    -- for single Var and Lit
 
-constantFolding (Add (Add (Var a) b) c) = constantFolding (Add (Var a) (constantFolding(Add b c)))
-constantFolding (Add (Add a (Var b)) c) = constantFolding (Add (Var b) (constantFolding (Add a c)))
+-- sumOfLits takes a list of expressions (Var / Lit) 
+-- and returns the total of all that are Lit expressions.
+sumOfLits :: [Expr] -> Expr
+sumOfLits l = 
+  let
+    litSum = sum $ [x | (Lit x) <- l] -- make a list (of the x) with every item of l that is a Lit, then take its sum
+  in
+  Lit litSum
 
-constantFolding (Add (Var a) (Add (Var b) (Lit 0))) = Add (Var a) (Var b)
-constantFolding (Add (Var a) (Add (Var b) (Lit c))) = Add (Var a) (Add (Var b) (Lit c))
-constantFolding (Add (Var a) (Add (Var b) (Var c))) = Add (Var a) (Add (Var b) (Var c))
+-- varsOnly takes a list of expressions (Var / Lit)
+-- and returns a list of only Var expressions.
+varsOnly :: [Expr] -> [Expr]
+varsOnly l = [x | x@(Var _) <- l]   -- make a list (of the Var x) with every item of l that is a Var
 
-constantFolding (Add a (Add (Var b) c)) = constantFolding (Add (Var b) (constantFolding (Add a c)))
-constantFolding (Add a (Add b (Var c))) = constantFolding (Add (Var c) (constantFolding (Add a b)))
-
-constantFolding (Add a b) = constantFolding (Add (constantFolding a) (constantFolding b))  
+-- toExpr takes a list of expressions (Var / Lit)
+-- and returns one expression combined by Add when needed.
+toExpr :: [Expr] -> Expr
+toExpr [] = Lit 0
+toExpr [x] = x  
+toExpr (x : xs) = Add x (toExpr xs)  -- make an expression of every item of l combined by Add expressions
